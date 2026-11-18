@@ -1,0 +1,10 @@
+Quarter,Business_Unit,Region,Revenue_Millions,Operating_Expense_Millions,Net_Profit_Millions,Headcount
+Q1,Cloud Infrastructure,North America,124.5,82.3,42.2,420
+Q1,AI & Data Analytics,North America,98.2,65.1,33.1,310
+Q1,Enterprise Security,Europe,54.8,38.2,16.6,180
+Q2,Cloud Infrastructure,North America,136.0,85.0,51.0,440
+Q2,AI & Data Analytics,North America,118.4,70.2,48.2,350
+Q2,Enterprise Security,Europe,62.1,40.5,21.6,195
+Q3,Cloud Infrastructure,Asia Pacific,88.7,56.2,32.5,260
+Q3,AI & Data Analytics,North America,142.9,78.4,64.5,390
+Q3,Enterprise Security,Global,75.3,48.0,27.3,220

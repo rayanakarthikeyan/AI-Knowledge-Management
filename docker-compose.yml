@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  knowledge-hub:
+    build: .
+    container_name: enterprise_ai_knowledge_hub
+    ports:
+      - "8501:8501"
+    environment:
+      - LLM_PROVIDER=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - CHUNK_SIZE=600
+      - CHUNK_OVERLAP=100
+      - TOP_K_RETRIEVAL=5
+      - ENABLE_HALLUCINATION_VALIDATION=true
+      - ENABLE_SAFETY_GUARDRAILS=true
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped

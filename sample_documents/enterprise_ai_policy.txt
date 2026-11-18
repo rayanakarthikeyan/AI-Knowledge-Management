@@ -1,0 +1,16 @@
+Global Enterprise AI Governance and Usage Policy
+
+1. Overview and Objective
+This document outlines the mandatory operational standards and safety requirements for deploying generative artificial intelligence solutions within the organization. All business units and development teams must comply with these directives.
+
+2. Data Privacy and Confidentiality
+No proprietary source code, customer personal identifying information (PII), or unreleased financial metrics may be transmitted to public, non-approved consumer AI endpoints. Enterprise solutions must implement strict input sanitization, PII redaction (masking emails, payment cards, and social security numbers), and local vector containment.
+
+3. Human-in-the-Loop and Hallucination Audits
+Automated AI agent workflows that impact strategic decisions, regulatory filings, or financial projections must incorporate an autonomous validation agent. The validation agent must assess response grounding against verified source documentation and flag any factual deviations or hallucinations prior to delivery.
+
+4. Model Architecture & Retrieval Best Practices
+The organization favors Retrieval-Augmented Generation (RAG) architectures leveraging dense embeddings and vector databases (such as ChromaDB). Multi-agent systems comprising Planner, Retriever, Reasoning, and Validator agents are the approved enterprise pattern for complex multi-step document reasoning.
+
+5. Approved Models and Vendors
+Approved cloud LLM providers include Google Gemini (gemini-1.5-flash and gemini-1.5-pro) and OpenAI (gpt-4o-mini). Self-hosted or offline deterministic reasoning engines are mandated for air-gapped environments.
