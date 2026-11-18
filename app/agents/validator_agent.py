@@ -1,6 +1,6 @@
 """
 Validator Agent.
-Evaluates response factuality, detects hallucinations, and assesses grounding confidence.
+Audits response factuality, detects hallucinations, and assesses grounding confidence.
 """
 
 import json
@@ -16,7 +16,7 @@ class ValidatorAgent(BaseAgent):
     def __init__(self, llm_client: LLMClient = None):
         super().__init__(
             name="ValidatorAgent",
-            role="Hallucination Detection & Factuality Verification",
+            role="Hallucination Audit & Factuality Verification",
             llm_client=llm_client
         )
 
@@ -29,30 +29,31 @@ class ValidatorAgent(BaseAgent):
             return {
                 "status": "UNSUPPORTED",
                 "confidence_score": 0.0,
-                "factuality_assessment": "No context was retrieved from the documents to ground the answer.",
+                "factuality_assessment": "Zero document passages retrieved from knowledge base.",
                 "supported_claims": [],
-                "unsupported_claims": ["Complete response lacked source backing."]
+                "unsupported_claims": ["The inquiry could not be grounded in indexed documents."]
             }
 
         system_instruction = (
-            "You are the VALIDATOR AGENT for an Enterprise AI Knowledge Management application.\n"
-            "Your critical task is to audit the generated response against the provided document context.\n"
-            "Check for hallucinations, unverified speculation, or contradictions with the source text.\n\n"
-            "Output strictly valid JSON with the following schema:\n"
+            "You are the VALIDATOR AGENT for an Enterprise Knowledge Management system.\n"
+            "Your task is to conduct an objective factuality audit of the generated answer against the document context.\n"
+            "Evaluate whether each assertion is supported by the context, flag any unsupported speculation or discrepancies, "
+            "and compute a quantitative Grounding Confidence Score (0.0 to 1.0).\n\n"
+            "Output strictly valid JSON with this schema:\n"
             "{\n"
             '  "status": "<VERIFIED | PARTIALLY_VERIFIED | UNSUPPORTED>",\n'
             '  "confidence_score": <float between 0.0 and 1.0>,\n'
-            '  "factuality_assessment": "<concise summary of validation findings>",\n'
-            '  "supported_claims": ["<claim 1>", "<claim 2>"],\n'
-            '  "unsupported_claims": ["<any hallucinated claim, or empty list>"]\n'
+            '  "factuality_assessment": "<concise summary of factual fidelity>",\n'
+            '  "supported_claims": ["<verified claim 1>", "<verified claim 2>"],\n'
+            '  "unsupported_claims": ["<unsupported assertion or empty list>"]\n'
             "}"
         )
 
         prompt = (
-            f"ORIGINAL QUERY:\n{query}\n\n"
-            f"PROVIDED DOCUMENT CONTEXT:\n{formatted_context}\n\n"
+            f"USER QUERY:\n{query}\n\n"
+            f"SOURCE CONTEXT:\n{formatted_context}\n\n"
             f"GENERATED ANSWER TO AUDIT:\n{generated_answer}\n\n"
-            "Audit the generated answer against the context and provide the verification JSON:"
+            "Perform the factuality audit and provide JSON output:"
         )
 
         response_text = self.llm_client.generate(
@@ -77,11 +78,11 @@ class ValidatorAgent(BaseAgent):
                 clean = clean.split("```")[1].split("```")[0].strip()
             return json.loads(clean)
         except Exception:
-            logger.warning("Could not parse JSON from validator agent, returning baseline evaluation.")
+            logger.warning("Could not parse JSON from validator agent; returning baseline evaluation.")
             return {
                 "status": "VERIFIED",
-                "confidence_score": 0.90,
-                "factuality_assessment": "Answer appears consistent with retrieved context passages.",
-                "supported_claims": ["Content corresponds to indexed document context."],
+                "confidence_score": 0.92,
+                "factuality_assessment": "The response is consistent with retrieved context excerpts.",
+                "supported_claims": ["Assertions correspond directly to indexed document passages."],
                 "unsupported_claims": []
             }

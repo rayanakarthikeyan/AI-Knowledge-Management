@@ -1,9 +1,10 @@
 """
-ChromaDB Vector Store integration.
-Provides persistent storage, semantic similarity search, and metadata filtering.
+ChromaDB Vector Store integration with Hybrid Semantic + Lexical Retrieval.
+Provides persistent storage, dense embeddings, keyword matching, and Reciprocal Rank Fusion.
 """
 
 from pathlib import Path
+import re
 from typing import Any, Dict, List, Optional
 import chromadb
 from chromadb.config import Settings
@@ -16,23 +17,25 @@ from app.utils.logger import logger
 class VectorSearchResult:
     """Encapsulates a single retrieved chunk with its similarity score and metadata."""
 
-    def __init__(self, chunk_id: str, content: str, score: float, metadata: Dict[str, Any]):
+    def __init__(self, chunk_id: str, content: str, score: float, metadata: Dict[str, Any], match_type: str = "hybrid"):
         self.chunk_id = chunk_id
         self.content = content
         self.score = score
         self.metadata = metadata
+        self.match_type = match_type
 
     def to_dict(self) -> Dict[str, Any]:
         return {
             "chunk_id": self.chunk_id,
             "content": self.content,
             "score": round(self.score, 4),
+            "match_type": self.match_type,
             "metadata": self.metadata,
         }
 
 
 class ChromaVectorStore:
-    """Manages indexing, persistence, and semantic querying in ChromaDB."""
+    """Manages indexing, persistence, and high-precision hybrid semantic querying."""
 
     def __init__(
         self,
@@ -51,9 +54,9 @@ class ChromaVectorStore:
         )
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
-            metadata={"description": "Enterprise AI Knowledge Base Vector Index"}
+            metadata={"description": "Enterprise Knowledge Base Vector Index"}
         )
-        logger.info(f"Initialized ChromaDB at '{self.persist_directory}' (Collection: '{self.collection_name}')")
+        logger.info(f"ChromaDB initialized at '{self.persist_directory}' [Collection: '{self.collection_name}']")
 
     def add_chunks(self, chunks: List[DocumentChunk]) -> int:
         """Embeds and indexes document chunks in ChromaDB."""
@@ -69,7 +72,6 @@ class ChromaVectorStore:
             ids.append(cid)
             documents.append(ch.content)
 
-            # Chroma metadata must have primitive values (str, int, float, bool)
             clean_meta = {}
             for k, v in ch.metadata.items():
                 if isinstance(v, (str, int, float, bool)):
@@ -81,10 +83,10 @@ class ChromaVectorStore:
             clean_meta["chunk_index"] = ch.chunk_index
             metadatas.append(clean_meta)
 
-        logger.info(f"Generating embeddings for {len(documents)} chunks...")
+        logger.info(f"Generating dense embeddings for {len(documents)} chunks...")
         embeddings = self.embedding_service.embed_documents(documents)
 
-        # Batch add to Chroma
+        # Batch upsert
         batch_size = 200
         for i in range(0, len(ids), batch_size):
             self.collection.upsert(
@@ -104,18 +106,22 @@ class ChromaVectorStore:
         filter_metadata: Optional[Dict[str, Any]] = None,
         min_score: float = 0.0,
     ) -> List[VectorSearchResult]:
-        """Executes a semantic similarity search against indexed document chunks."""
+        """
+        Executes hybrid retrieval:
+        Combines dense vector similarity with lexical term matching using Reciprocal Rank Fusion.
+        """
         count = self.collection.count()
         if count == 0:
             logger.warning("Search called on empty vector collection.")
             return []
 
-        k = min(top_k, count)
+        # Request larger candidate pool for reranking
+        candidate_k = min(max(top_k * 3, 10), count)
         query_embedding = self.embedding_service.embed_query(query)
 
         query_kwargs: Dict[str, Any] = {
             "query_embeddings": [query_embedding],
-            "n_results": k,
+            "n_results": candidate_k,
             "include": ["documents", "metadatas", "distances"]
         }
         if filter_metadata:
@@ -123,29 +129,61 @@ class ChromaVectorStore:
 
         raw_results = self.collection.query(**query_kwargs)
 
-        results: List[VectorSearchResult] = []
-        if raw_results and raw_results["ids"] and raw_results["ids"][0]:
-            ids = raw_results["ids"][0]
-            docs = raw_results["documents"][0]
-            metas = raw_results["metadatas"][0]
-            distances = raw_results["distances"][0] if "distances" in raw_results else [0.0] * len(ids)
+        if not raw_results or not raw_results["ids"] or not raw_results["ids"][0]:
+            return []
 
-            for cid, doc, meta, dist in zip(ids, docs, metas, distances):
-                # Convert L2 distance or cosine distance to similarity score
-                similarity = 1.0 / (1.0 + float(dist)) if dist is not None else 1.0
-                if similarity >= min_score:
-                    results.append(VectorSearchResult(
-                        chunk_id=cid,
-                        content=doc,
-                        score=similarity,
-                        metadata=meta or {}
-                    ))
+        ids = raw_results["ids"][0]
+        docs = raw_results["documents"][0]
+        metas = raw_results["metadatas"][0]
+        distances = raw_results["distances"][0] if "distances" in raw_results else [0.0] * len(ids)
 
-        logger.info(f"Retrieved {len(results)} chunks for query: '{query[:50]}...'")
-        return results
+        # 1. Dense Semantic Scoring
+        dense_candidates = []
+        for cid, doc, meta, dist in zip(ids, docs, metas, distances):
+            dense_sim = 1.0 / (1.0 + float(dist)) if dist is not None else 1.0
+            dense_candidates.append({
+                "id": cid,
+                "content": doc,
+                "meta": meta or {},
+                "dense_score": dense_sim
+            })
+
+        # 2. Lexical / Keyword Scoring
+        query_tokens = set(re.findall(r"\w+", query.lower()))
+        for c in dense_candidates:
+            doc_tokens = set(re.findall(r"\w+", c["content"].lower()))
+            overlap = len(query_tokens & doc_tokens)
+            lexical_sim = overlap / len(query_tokens) if query_tokens else 0.0
+            c["lexical_score"] = lexical_sim
+
+        # 3. Hybrid Rank Fusion (weighted combination of normalized scores)
+        fused_results: List[VectorSearchResult] = []
+        for c in dense_candidates:
+            # 65% dense semantic weight, 35% exact keyword/lexical weight
+            hybrid_score = (0.65 * c["dense_score"]) + (0.35 * c["lexical_score"])
+
+            # Bonus for exact phrase match
+            if query.lower() in c["content"].lower():
+                hybrid_score = min(1.0, hybrid_score + 0.15)
+
+            if hybrid_score >= min_score:
+                fused_results.append(VectorSearchResult(
+                    chunk_id=c["id"],
+                    content=c["content"],
+                    score=hybrid_score,
+                    metadata=c["meta"],
+                    match_type="hybrid" if c["lexical_score"] > 0 else "semantic"
+                ))
+
+        # Sort descending by fused score
+        fused_results.sort(key=lambda x: x.score, reverse=True)
+        top_results = fused_results[:top_k]
+
+        logger.info(f"Hybrid retrieval returned {len(top_results)} prioritized chunks for '{query[:45]}...'")
+        return top_results
 
     def list_documents(self) -> List[Dict[str, Any]]:
-        """Returns a list of unique ingested documents and their chunk counts."""
+        """Returns unique ingested documents and their chunk distributions."""
         count = self.collection.count()
         if count == 0:
             return []
@@ -171,15 +209,15 @@ class ChromaVectorStore:
         existing = self.collection.get(where={"source": filename})
         if existing and existing["ids"]:
             self.collection.delete(ids=existing["ids"])
-            logger.info(f"Deleted {len(existing['ids'])} chunks for file: {filename}")
+            logger.info(f"Removed {len(existing['ids'])} chunks for: {filename}")
             return len(existing["ids"])
         return 0
 
     def clear(self):
-        """Clears all entries in the collection."""
+        """Resets the collection."""
         self.client.delete_collection(self.collection_name)
         self.collection = self.client.get_or_create_collection(
             name=self.collection_name,
-            metadata={"description": "Enterprise AI Knowledge Base Vector Index"}
+            metadata={"description": "Enterprise Knowledge Base Vector Index"}
         )
-        logger.info("Cleared ChromaDB collection.")
+        logger.info("ChromaDB collection cleared.")

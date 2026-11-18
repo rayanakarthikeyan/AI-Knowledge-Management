@@ -15,7 +15,7 @@ class ReasoningAgent(BaseAgent):
     def __init__(self, llm_client: LLMClient = None):
         super().__init__(
             name="ReasoningAgent",
-            role="Contextual Synthesis & Response Generation",
+            role="Contextual Synthesis & Response Formulation",
             llm_client=llm_client
         )
 
@@ -28,35 +28,37 @@ class ReasoningAgent(BaseAgent):
         if not formatted_context or formatted_context == "NO_RELEVANT_CONTEXT_FOUND":
             return {
                 "response": (
-                    "I was unable to find relevant information in the uploaded enterprise documents "
-                    "to answer your question. Please ensure the relevant files (PDF, DOCX, TXT, CSV, or Excel) "
-                    "are uploaded to the knowledge base."
+                    "No relevant information was found in the indexed enterprise documents "
+                    "to answer this inquiry. Please verify that the pertinent document "
+                    "(PDF, Word, TXT, CSV, or Excel) has been ingested into the repository."
                 ),
                 "has_context": False
             }
 
         system_instruction = (
-            "You are the REASONING AGENT of an Enterprise Knowledge Management system.\n"
-            "Your task is to answer the user's question accurately, strictly grounded in the provided document context.\n"
-            "Rules:\n"
-            "1. Rely strictly on the facts, figures, and data provided in the CONTEXT blocks.\n"
-            "2. Whenever making a specific claim or presenting data, cite the source using the source index (e.g., [1], [2]).\n"
-            "3. If the context does not contain enough information to fully answer a part of the question, clearly state what is missing.\n"
-            "4. For CSV or Excel tabular data, provide exact numbers and clarify sheet/row details where relevant.\n"
-            "5. Structure your response clearly with headings or bullet points where appropriate."
+            "You are the REASONING AGENT of an Enterprise Knowledge Management application.\n"
+            "Your objective is to provide a comprehensive, accurate, and professional response "
+            "strictly grounded in the provided document context.\n\n"
+            "Directives:\n"
+            "1. Ground all claims directly in the facts, metrics, and excerpts given in the CONTEXT blocks.\n"
+            "2. Cite every factual assertion using brackets corresponding to the source index (e.g., [1], [2]).\n"
+            "3. Maintain a formal, executive tone without informal vernacular or emojis.\n"
+            "4. For CSV or Excel tabular data, provide exact quantities, currencies, and specify row or sheet names.\n"
+            "5. If a specific portion of the inquiry is not addressed in the context, explicitly indicate the omission.\n"
+            "6. Use structured formatting (bullet points, clear paragraphs, comparison tables) to maximize clarity."
         )
 
         prompt = (
-            f"USER QUESTION:\n{query}\n\n"
-            f"REPRESENTED INTENT: {intent}\n\n"
+            f"USER INQUIRY:\n{query}\n\n"
+            f"DETECTED INTENT: {intent}\n\n"
             f"DOCUMENT CONTEXT:\n{formatted_context}\n\n"
-            "Provide a comprehensive, accurate, and cited answer:"
+            "Provide a grounded, professional response with citations:"
         )
 
         answer = self.llm_client.generate(
             prompt=prompt,
             system_instruction=system_instruction,
-            temperature=0.2
+            temperature=0.15
         )
 
         return {

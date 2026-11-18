@@ -1,33 +1,28 @@
-# 🧠 Enterprise AI Knowledge Management Hub
-
-[![Python 3.11](https://img.shields.io/badge/Python-3.11-blue.svg)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/Streamlit-1.35+-FF4B4B.svg)](https://streamlit.io/)
-[![ChromaDB](https://img.shields.io/badge/VectorDB-ChromaDB-purple.svg)](https://www.trychroma.com/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+# Enterprise AI Knowledge Management Hub
 
 An enterprise-grade, Generative AI-powered Knowledge Management Application built with **Retrieval-Augmented Generation (RAG)**, **Vector Databases (ChromaDB)**, and an autonomous **Multi-Agent Orchestration Architecture** (Planner, Retriever, Reasoning, and Validator agents).
 
 ---
 
-## 🚀 Key Capabilities
+## Key Capabilities
 
-- 📄 **Multi-Format Document Ingestion**: Seamlessly ingest and index documents in **PDF**, **Word (.docx)**, **Plain Text (.txt, .md)**, **CSV**, and **Excel (.xlsx, .xls)**.
-- 💬 **Natural Language Question Answering**: Query across massive enterprise documents with conversational context and high semantic recall.
-- 🤖 **Autonomous Multi-Agent Workflow**:
-  - **📋 Planner Agent**: Analyzes intent, constructs subtasks, generates targeted queries, and establishes document filters.
-  - **🔍 Retriever Agent**: Queries ChromaDB vector store, deduplicates passages, ranks by cosine similarity, and formats exact citation references.
-  - **🧠 Reasoning Agent**: Synthesizes cross-document context, performs tabular reasoning, and drafts cited responses.
-  - **🛡️ Validator Agent**: Audits generated responses for hallucinations and evaluates grounding confidence against source documents.
-- 📑 **Source Grounding & Citations**: Every answer provides clickable source cards with exact page numbers, sheet names, row indices, and relevance scores.
-- 🔒 **Enterprise Safety & Guardrails**:
+- **Multi-Format Document Ingestion**: Ingest and index documents in PDF, Word (.docx), Plain Text (.txt, .md), CSV, and Excel (.xlsx, .xls).
+- **Natural Language Question Answering**: Query across enterprise document repositories with conversational context and hybrid retrieval precision.
+- **Autonomous Multi-Agent Workflow**:
+  - **Planner Agent**: Analyzes intent, constructs subtasks, generates targeted queries, and establishes document filters.
+  - **Retriever Agent**: Executes hybrid retrieval (dense vector similarity + lexical keyword matching with Reciprocal Rank Fusion) over ChromaDB, deduplicates passages, and formats exact citation references.
+  - **Reasoning Agent**: Synthesizes cross-document context, performs tabular reasoning, and drafts cited responses.
+  - **Validator Agent**: Audits generated responses for hallucinations and evaluates grounding confidence against source documents.
+- **Source Grounding & Citations**: Every answer provides verified source references with exact page numbers, sheet names, row indices, and relevance scores.
+- **Enterprise Safety & Guardrails**:
   - Built-in **Prompt Injection Guard** (detects jailbreaks and system override attempts).
   - Automated **PII Masking** (redacts emails, credit cards, SSNs, and API keys).
   - Path traversal and file size sanitization.
-- 🔌 **Provider Agnostic**: Out-of-the-box support for **Google Gemini**, **OpenAI**, **Groq**, and a **Built-in Offline Reasoning Engine** that works without any external API keys!
+- **Provider Agnostic**: Support for Google Gemini, OpenAI, Groq, and a built-in Offline Reasoning Engine.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```
                                   +------------------------------------+
@@ -52,18 +47,18 @@ An enterprise-grade, Generative AI-powered Knowledge Management Application buil
                   |                                       v
                   |                     +------------------------------------+
                   |                     |  ChromaDB Vector Store & Embedding |
-                  |                     |  - SentenceTransformer dense index |
+                  |                     |  - Hybrid Semantic + Lexical RRF   |
                   |                     +-----------------+------------------+
                   |                                       |
                   v                                       v
 +----------------------------------------------------------------------------+
 |                        Multi-Agent RAG Orchestrator                        |
 |                                                                            |
-|  [0] Prompt Guard & Safety  ──► Blocks jailbreaks & masks PII              |
-|  [1] Planner Agent          ──► Query intent analysis & sub-task planning   |
-|  [2] Retriever Agent        ──► Multi-query search & similarity ranking    |
-|  [3] Reasoning Agent        ──► Context synthesis & cited answer drafting  |
-|  [4] Validator Agent        ──► Factuality audit & confidence scoring      |
+|  [0] Prompt Guard & Safety  --> Blocks jailbreaks & masks PII              |
+|  [1] Planner Agent          --> Query intent analysis & sub-task planning   |
+|  [2] Retriever Agent        --> Hybrid multi-query search & ranking        |
+|  [3] Reasoning Agent        --> Context synthesis & cited answer drafting  |
+|  [4] Validator Agent        --> Factuality audit & confidence scoring      |
 +----------------------------------------------------------------------------+
 ```
 
@@ -71,7 +66,7 @@ For complete architectural details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 AI Knowledge Management/
@@ -91,7 +86,7 @@ AI Knowledge Management/
 │   │
 │   ├── vectorstore/             # Embeddings & Vector Indexing
 │   │   ├── embeddings.py        # Dense embeddings (SentenceTransformers / fallback)
-│   │   └── chroma_store.py      # Persistent ChromaDB storage & search engine
+│   │   └── chroma_store.py      # Hybrid retrieval ChromaDB storage & search
 │   │
 │   ├── agents/                  # Autonomous Multi-Agent Pipeline
 │   │   ├── base_agent.py        # Base agent execution with telemetry timers
@@ -113,6 +108,13 @@ AI Knowledge Management/
 │   ├── ARCHITECTURE.md          # In-depth architectural design
 │   └── AGENT_WORKFLOW.md        # Detailed agent protocols & JSON schemas
 │
+├── sample_documents/            # Enterprise test files for all supported formats
+│   ├── enterprise_security_compliance.pdf
+│   ├── enterprise_ai_policy.txt
+│   ├── executive_summary.docx
+│   ├── quarterly_financials.csv
+│   └── project_budgets.xlsx
+│
 ├── tests/                       # Complete automated unit test suite
 │   ├── test_loaders.py          # PDF, DOCX, TXT, CSV, Excel loader tests
 │   ├── test_chunker.py          # Chunk boundary and metadata tests
@@ -130,13 +132,13 @@ AI Knowledge Management/
 
 ---
 
-## ⚡ Quickstart Guide
+## Quickstart Guide
 
 ### 1. Prerequisites
 - Python 3.11+
 - Git
 
-### 2. Clone and Setup Environment
+### 2. Setup Environment
 
 ```bash
 git clone https://github.com/rayanakarthikeyan/AI-Knowledge-Management.git
@@ -146,9 +148,9 @@ cd AI-Knowledge-Management
 python -m venv .venv
 
 # Activate virtual environment
-# On Windows:
+# Windows:
 .venv\Scripts\activate
-# On Linux/macOS:
+# Linux/macOS:
 source .venv/bin/activate
 
 # Install dependencies
@@ -157,42 +159,41 @@ pip install -r requirements.txt
 
 ### 3. Configure Environment Variables
 
-Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` to add your preferred LLM provider and API key:
+Configure your preferred LLM provider in `.env`:
 ```ini
 LLM_PROVIDER=gemini
 GEMINI_API_KEY=your_gemini_api_key_here
 ```
-*(Note: You can also leave this blank and use the built-in Offline Reasoning Engine or enter your API key dynamically in the Streamlit UI).*
+*(You can also use the built-in Offline Reasoning Engine without any external API keys).*
 
-### 4. Launch the Application
+### 4. Launch Application
 
 ```bash
 streamlit run app/main.py
 ```
 
-The application will open in your browser at `http://localhost:8501`.
+Access the interface at `http://localhost:8501`.
 
 ---
 
-## 🧪 Running Automated Tests
+## Automated Verification Tests
 
-Run the comprehensive pytest suite:
+Run the complete test suite:
 ```bash
 pytest -v
 ```
 
-All 12 unit and integration tests validate the document loaders, chunking logic, vector database, prompt injection guard, and multi-agent orchestrator.
+All unit and integration tests validate the document loaders, chunking logic, vector database, prompt injection guard, and multi-agent orchestrator.
 
 ---
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
-To build and run with Docker:
+Build and run with Docker:
 
 ```bash
 docker build -t enterprise-ai-knowledge-hub .
@@ -206,13 +207,5 @@ docker compose up -d
 
 ---
 
-## 🛡️ Safety & Compliance
-
-- **Prompt Injection Defense**: Evaluates incoming queries against adversarial jailbreak signatures.
-- **PII Redaction**: Detects and redacts Credit Cards, SSNs, and Email addresses before displaying or storing data.
-- **Data Grounding**: The Validator Agent audits every response to guarantee claims originate from indexed documents.
-
----
-
-## 📄 License
+## License
 MIT License. Built for enterprise knowledge intelligence.

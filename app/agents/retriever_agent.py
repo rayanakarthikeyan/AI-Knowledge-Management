@@ -1,6 +1,6 @@
 """
 Retriever Agent.
-Executes semantic vector searches, applies metadata filtering, and ranks relevant passages.
+Executes hybrid semantic and lexical vector searches, metadata filtering, and passage ranking.
 """
 
 from typing import Any, Dict, List
@@ -11,12 +11,12 @@ from app.utils.logger import logger
 
 
 class RetrieverAgent(BaseAgent):
-    """Executes multi-query retrieval and deduplication over the knowledge base."""
+    """Executes multi-query hybrid retrieval and deduplication over the knowledge base."""
 
     def __init__(self, vector_store: ChromaVectorStore):
         super().__init__(
             name="RetrieverAgent",
-            role="Semantic Document Retrieval & Passage Ranking"
+            role="Hybrid Retrieval & Passage Ranking"
         )
         self.vector_store = vector_store
 
@@ -33,7 +33,7 @@ class RetrieverAgent(BaseAgent):
             search_queries.append(original_query)
 
         filter_metadata = None
-        if doc_filter and isinstance(doc_filter, str) and doc_filter.strip().lower() != "null":
+        if doc_filter and isinstance(doc_filter, str) and doc_filter.strip().lower() not in ["null", "none"]:
             filter_metadata = {"source": doc_filter.strip()}
 
         seen_chunk_ids = set()
@@ -51,11 +51,10 @@ class RetrieverAgent(BaseAgent):
                     seen_chunk_ids.add(res.chunk_id)
                     all_results.append(res)
 
-        # Sort combined results descending by similarity score
+        # Sort combined results descending by fused score
         all_results.sort(key=lambda x: x.score, reverse=True)
         top_results = all_results[:top_k]
 
-        # Format context string for reasoning agent
         context_blocks = []
         citations = []
 
@@ -63,18 +62,28 @@ class RetrieverAgent(BaseAgent):
             src = item.metadata.get("source", "Document")
             page = item.metadata.get("page_number")
             sheet = item.metadata.get("sheet_name")
+            row = item.metadata.get("row_index")
 
-            loc = f"Page {page}" if page else (f"Sheet '{sheet}'" if sheet else "General")
-            citation_label = f"[{idx}] {src} ({loc})"
+            if page:
+                location = f"Page {page}"
+            elif sheet and row:
+                location = f"Sheet '{sheet}', Row {row}"
+            elif sheet:
+                location = f"Sheet '{sheet}'"
+            else:
+                location = "General Section"
 
+            citation_label = f"[{idx}] {src} ({location})"
             context_blocks.append(f"--- SOURCE {citation_label} ---\n{item.content}")
+
             citations.append({
                 "index": idx,
                 "label": citation_label,
                 "source": src,
-                "location": loc,
+                "location": location,
                 "score": item.score,
-                "content_preview": item.content[:200] + ("..." if len(item.content) > 200 else ""),
+                "match_type": getattr(item, "match_type", "hybrid"),
+                "content_preview": item.content[:240] + ("..." if len(item.content) > 240 else ""),
                 "chunk_id": item.chunk_id
             })
 

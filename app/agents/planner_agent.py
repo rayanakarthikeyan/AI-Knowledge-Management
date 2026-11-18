@@ -11,7 +11,7 @@ from app.utils.logger import logger
 
 
 class PlannerAgent(BaseAgent):
-    """Analyzes the user's inquiry and establishes an execution strategy."""
+    """Analyzes user inquiry and establishes high-precision execution strategy."""
 
     def __init__(self, llm_client: LLMClient = None):
         super().__init__(
@@ -28,23 +28,23 @@ class PlannerAgent(BaseAgent):
 
         system_instruction = (
             "You are the PLANNER AGENT for an Enterprise Knowledge Management system. "
-            "Your objective is to analyze the user's natural language question and formulate an optimal plan. "
-            "Identify the user's intent (e.g. Factual Lookup, Cross-document Comparison, Tabular Calculation, Summarization), "
-            "generate specific semantic search queries, determine if a specific file filter is mentioned, "
-            "and outline sub-steps.\n\n"
-            "Output strictly valid JSON with this format:\n"
+            "Analyze the user's natural language inquiry and establish an optimal retrieval and reasoning plan. "
+            "Identify the user's intent (e.g., Factual Retrieval, Cross-document Synthesis, Tabular Analysis, Aggregation), "
+            "generate 2 to 3 targeted semantic and keyword search queries, determine if a specific file or sheet is referenced, "
+            "and decompose the inquiry into clear subtasks.\n\n"
+            "Output strictly valid JSON with this exact schema:\n"
             "{\n"
             '  "intent": "<string>",\n'
-            '  "search_queries": ["<query 1>", "<query 2>"],\n'
+            '  "search_queries": ["<dense query>", "<lexical query>"],\n'
             '  "document_filter": "<filename or null>",\n'
-            '  "subtasks": ["<step 1>", "<step 2>"]\n'
+            '  "subtasks": ["<subtask 1>", "<subtask 2>"]\n'
             "}"
         )
 
         prompt = (
             f"User Question: {query}\n"
-            f"Available Documents in Knowledge Base: {docs_summary}\n\n"
-            "Provide the task plan in JSON format:"
+            f"Available Documents: {docs_summary}\n\n"
+            "Formulate the execution plan in JSON:"
         )
 
         response_text = self.llm_client.generate(
@@ -53,7 +53,6 @@ class PlannerAgent(BaseAgent):
             temperature=0.1
         )
 
-        # Parse JSON output
         plan = self._parse_json(response_text, query)
         return {
             "plan": plan,
@@ -70,14 +69,14 @@ class PlannerAgent(BaseAgent):
                 clean = clean.split("```")[1].split("```")[0].strip()
             return json.loads(clean)
         except Exception:
-            logger.warning("Could not parse JSON from planner agent, applying structured heuristic.")
+            logger.warning("Could not parse JSON from planner agent; applying structured heuristic.")
             return {
                 "intent": "Information Retrieval",
                 "search_queries": [fallback_query],
                 "document_filter": None,
                 "subtasks": [
-                    f"Retrieve passages for '{fallback_query}'",
-                    "Synthesize information into accurate answer",
-                    "Validate answer against source documents"
+                    f"Retrieve relevant passages for '{fallback_query}'",
+                    "Synthesize findings with source citations",
+                    "Verify factual accuracy against source context"
                 ]
             }

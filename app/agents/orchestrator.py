@@ -16,7 +16,7 @@ from app.utils.logger import logger
 
 
 class AgentOrchestrator:
-    """Manages multi-agent execution pipeline with observability and safety controls."""
+    """Manages multi-agent execution pipeline with telemetry and safety guardrails."""
 
     def __init__(
         self,
@@ -28,7 +28,7 @@ class AgentOrchestrator:
         self.llm_client = llm_client or LLMClient()
         self.prompt_guard = prompt_guard or PromptGuard()
 
-        # Instantiate agents
+        # Instantiate specialized agents
         self.planner = PlannerAgent(llm_client=self.llm_client)
         self.retriever = RetrieverAgent(vector_store=self.vector_store)
         self.reasoning = ReasoningAgent(llm_client=self.llm_client)
@@ -45,7 +45,7 @@ class AgentOrchestrator:
             is_safe, safety_msg = self.prompt_guard.validate_query(query)
             if not is_safe:
                 return {
-                    "answer": f"⚠️ **Security Guardrail Triggered**: {safety_msg}",
+                    "answer": f"[SECURITY GUARDRAIL TRIGGERED] Request Blocked: {safety_msg}",
                     "status": "blocked_by_safety",
                     "citations": [],
                     "validation": {
@@ -72,7 +72,7 @@ class AgentOrchestrator:
         plan = planner_output.get("plan", {})
 
         # -------------------------------------------------------------
-        # Step 2: Retriever Agent
+        # Step 2: Retriever Agent (Hybrid Search)
         # -------------------------------------------------------------
         retriever_input = {
             "query": query,
@@ -99,7 +99,7 @@ class AgentOrchestrator:
         raw_answer = reasoning_output.get("response", "")
 
         # -------------------------------------------------------------
-        # Step 4: Validator Agent (Hallucination Audit)
+        # Step 4: Validator Agent (Factuality Audit)
         # -------------------------------------------------------------
         validation_info = {}
         if config.ENABLE_HALLUCINATION_VALIDATION and retriever_output.get("retrieved_count", 0) > 0:
@@ -115,10 +115,10 @@ class AgentOrchestrator:
             validation_info = {
                 "status": "UNSUPPORTED" if retriever_output.get("retrieved_count", 0) == 0 else "SKIPPED",
                 "confidence_score": 0.0 if retriever_output.get("retrieved_count", 0) == 0 else 0.85,
-                "factuality_assessment": "Retrieved 0 document chunks from knowledge base."
+                "factuality_assessment": "Zero matching passages retrieved from knowledge base."
             }
 
-        # Mask any sensitive PII in the generated answer if detected
+        # Mask sensitive PII
         final_answer, detected_pii = self.prompt_guard.mask_pii(raw_answer)
 
         return {
