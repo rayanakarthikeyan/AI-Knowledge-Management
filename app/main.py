@@ -3,10 +3,11 @@ Enterprise Knowledge Management Platform
 Streamlit Web Interface with Autonomous Multi-Agent RAG Orchestration.
 """
 
+import json
 from pathlib import Path
 import streamlit as st
 
-from app.config import config, UPLOAD_DIR
+from app.config import config, BASE_DIR, UPLOAD_DIR
 from app.ingestion.document_parser import DocumentParser
 from app.vectorstore.chroma_store import ChromaVectorStore
 from app.safety.sanitization import InputSanitizer
@@ -14,6 +15,8 @@ from app.safety.prompt_guard import PromptGuard
 from app.agents.llm_client import LLMClient
 from app.agents.orchestrator import AgentOrchestrator
 from app.utils.logger import logger
+
+SAMPLE_DIR = BASE_DIR / "sample_documents"
 
 # -----------------------------------------------------------------------------
 # Page Configuration & Professional Corporate Theme
@@ -147,6 +150,37 @@ if "api_key" not in st.session_state:
 
 
 # -----------------------------------------------------------------------------
+# Helper: Export Conversation Report
+# -----------------------------------------------------------------------------
+def generate_audit_export() -> str:
+    """Formats the current session history into a Markdown compliance audit report."""
+    lines = [
+        "# Enterprise Knowledge Management - Audit & Telemetry Report",
+        f"Generated Timestamp: {st.session_state.get('last_query_time', 'N/A')}",
+        f"Active Model Engine: {st.session_state.llm_provider}",
+        "---",
+        ""
+    ]
+    for idx, item in enumerate(st.session_state.chat_history, start=1):
+        if item["role"] == "user":
+            lines.append(f"### Inquiry {idx}: {item['content']}\n")
+        else:
+            lines.append(f"**Synthesized Answer:**\n{item['content']}\n")
+            validation = item.get("validation", {})
+            lines.append(f"- **Verification Status:** {validation.get('status', 'N/A')}")
+            lines.append(f"- **Grounding Confidence:** {validation.get('confidence_score', 0.0) * 100:.1f}%")
+            lines.append(f"- **Factuality Assessment:** {validation.get('factuality_assessment', 'N/A')}")
+
+            citations = item.get("citations", [])
+            if citations:
+                lines.append("\n**Citations:**")
+                for c in citations:
+                    lines.append(f"- {c['label']} (Similarity: {c['score']:.3f})")
+            lines.append("\n---\n")
+    return "\n".join(lines)
+
+
+# -----------------------------------------------------------------------------
 # Sidebar: Control Panel & Document Management
 # -----------------------------------------------------------------------------
 with st.sidebar:
@@ -222,6 +256,24 @@ with st.sidebar:
 
         st.rerun()
 
+    # Convenience helper: Load Sample Documents
+    if SAMPLE_DIR.exists():
+        if st.button("Load Bundled Sample Documents", help="Loads pre-configured enterprise PDF, DOCX, TXT, CSV, and Excel sample files", use_container_width=True):
+            sample_files = list(SAMPLE_DIR.glob("*.*"))
+            loaded_count = 0
+            for sf in sample_files:
+                if sf.suffix.lower() in config.SUPPORTED_EXTENSIONS:
+                    try:
+                        raw_doc, chunks = parser.parse_file(sf)
+                        vector_store.delete_document(sf.name)
+                        vector_store.add_chunks(chunks)
+                        loaded_count += 1
+                    except Exception as e:
+                        logger.error(f"Error loading sample file {sf.name}: {e}")
+            if loaded_count > 0:
+                st.success(f"Successfully loaded {loaded_count} sample enterprise documents.")
+                st.rerun()
+
     st.divider()
 
     # 3. Knowledge Repository Overview
@@ -239,12 +291,18 @@ with st.sidebar:
                 vector_store.delete_document(d['filename'])
                 st.rerun()
 
-        if st.button("Clear Knowledge Base", type="secondary", use_container_width=True):
+        st.write("")
+        col_clear1, col_clear2 = st.columns(2)
+        if col_clear1.button("Reset KB", type="secondary", use_container_width=True):
             vector_store.clear()
             st.session_state.chat_history = []
             st.rerun()
+
+        if col_clear2.button("Clear Chat", use_container_width=True):
+            st.session_state.chat_history = []
+            st.rerun()
     else:
-        st.info("No documents indexed. Upload files above to initialize the knowledge base.")
+        st.info("No documents indexed. Upload files above or load bundled samples.")
 
 
 # -----------------------------------------------------------------------------
@@ -396,3 +454,15 @@ if user_query:
         "validation": result.get("validation", {}),
         "workflow_trace": result.get("workflow_trace", [])
     })
+
+# Export Compliance & Audit Report Option
+if st.session_state.chat_history:
+    st.divider()
+    audit_report_text = generate_audit_export()
+    st.download_button(
+        label="Download Compliance & Audit Report",
+        data=audit_report_text,
+        file_name="enterprise_knowledge_audit_report.md",
+        mime="text/markdown",
+        help="Export all queries, synthesized answers, citations, and agent audit metrics."
+    )
