@@ -4,6 +4,20 @@ An enterprise-grade, Generative AI-powered Knowledge Management Application buil
 
 ---
 
+## User Interface & Screenshots
+
+### 1. Multi-Agent Reasoning, Grounded Citations & Audit Trace
+Interactive response view showcasing verified source citations, Planner Agent task decomposition, Validator Agent factuality audit (`[VERIFIED]`, Grounding Confidence: `95.0%`), and agent execution telemetry in milliseconds:
+
+![Multi-Agent Workflow & Citations](docs/screenshots/03_multi_agent_workflow_and_citations.png)
+
+### 2. Document Repository & Executive Dashboard
+Multi-format document repository overview showing indexed PDF, Word, TXT, CSV, and Excel spreadsheets, active LLM inference engine, and security guardrail status:
+
+![Document Repository & Executive Metrics](docs/screenshots/02_indexed_repository.png)
+
+---
+
 ## Key Capabilities
 
 - **Multi-Format Document Ingestion**: Ingest and index documents in PDF, Word (.docx), Plain Text (.txt, .md), CSV, and Excel (.xlsx, .xls).
@@ -19,6 +33,7 @@ An enterprise-grade, Generative AI-powered Knowledge Management Application buil
   - Automated **PII Masking** (redacts emails, credit cards, SSNs, and API keys).
   - Path traversal and file size sanitization.
 - **Provider Agnostic**: Support for Google Gemini, OpenAI, Groq, and a built-in Offline Reasoning Engine.
+- **Audit & Compliance Export**: Download session transcripts, citations, and agent factuality audits as Markdown reports.
 
 ---
 
@@ -71,6 +86,10 @@ For complete architectural details, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE
 ```
 AI Knowledge Management/
 │
+├── .github/
+│   └── workflows/
+│       └── ci.yml               # GitHub Actions automated CI/CD pipeline
+│
 ├── app/
 │   ├── main.py                  # Streamlit application UI & chat interface
 │   ├── config.py                # Central app configuration & thresholds
@@ -106,7 +125,11 @@ AI Knowledge Management/
 │
 ├── docs/
 │   ├── ARCHITECTURE.md          # In-depth architectural design
-│   └── AGENT_WORKFLOW.md        # Detailed agent protocols & JSON schemas
+│   ├── AGENT_WORKFLOW.md        # Detailed agent protocols & JSON schemas
+│   └── screenshots/             # Production UI screenshots
+│       ├── 01_dashboard_overview.png
+│       ├── 02_indexed_repository.png
+│       └── 03_multi_agent_workflow_and_citations.png
 │
 ├── sample_documents/            # Enterprise test files for all supported formats
 │   ├── enterprise_security_compliance.pdf
@@ -114,6 +137,9 @@ AI Knowledge Management/
 │   ├── executive_summary.docx
 │   ├── quarterly_financials.csv
 │   └── project_budgets.xlsx
+│
+├── scripts/
+│   └── capture_screenshots.py   # Automated headless UI test & capture script
 │
 ├── tests/                       # Complete automated unit test suite
 │   ├── test_loaders.py          # PDF, DOCX, TXT, CSV, Excel loader tests
@@ -127,6 +153,7 @@ AI Knowledge Management/
 ├── requirements.txt             # Locked Python dependencies
 ├── Dockerfile                   # Containerization configuration
 ├── docker-compose.yml           # Multi-container orchestration
+├── LICENSE                      # MIT License
 └── README.md                    # Project documentation
 ```
 
@@ -176,7 +203,7 @@ GEMINI_API_KEY=your_gemini_api_key_here
 streamlit run app/main.py
 ```
 
-Access the interface at `http://localhost:8501`.
+Access the interface at `http://localhost:8501`. Click **"Load Bundled Sample Documents"** in the sidebar to populate the repository instantly with sample PDF, Word, TXT, CSV, and Excel files.
 
 ---
 
@@ -187,7 +214,7 @@ Run the complete test suite:
 pytest -v
 ```
 
-All unit and integration tests validate the document loaders, chunking logic, vector database, prompt injection guard, and multi-agent orchestrator.
+All 12 unit and integration tests validate the document loaders, chunking logic, vector database, prompt injection guard, and multi-agent orchestrator.
 
 ---
 

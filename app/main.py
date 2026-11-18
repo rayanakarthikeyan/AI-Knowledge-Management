@@ -3,8 +3,15 @@ Enterprise Knowledge Management Platform
 Streamlit Web Interface with Autonomous Multi-Agent RAG Orchestration.
 """
 
-import json
+import sys
 from pathlib import Path
+
+# Ensure project root is in sys.path
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+import json
 import streamlit as st
 
 from app.config import config, BASE_DIR, UPLOAD_DIR
@@ -156,7 +163,6 @@ def generate_audit_export() -> str:
     """Formats the current session history into a Markdown compliance audit report."""
     lines = [
         "# Enterprise Knowledge Management - Audit & Telemetry Report",
-        f"Generated Timestamp: {st.session_state.get('last_query_time', 'N/A')}",
         f"Active Model Engine: {st.session_state.llm_provider}",
         "---",
         ""
